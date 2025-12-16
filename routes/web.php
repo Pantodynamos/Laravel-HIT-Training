@@ -18,3 +18,7 @@ Route::get('/stock/saldo', [StockController::class, 'saldo'])
 
 Route::get('/stock/history', [StockController::class, 'history'])
     ->name('stock.history');
+
+Route::get('/stock/history', 'StockController@history')->name('stock.history');
+Route::get('/stock/history/data', 'StockController@historyData')->name('stock.history.data');
+

@@ -1,70 +1,79 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <title>History Transaksi</title>
-    <link rel="stylesheet"
-      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-
 </head>
 <body>
 
 <h2>Report History Transaksi</h2>
 
-<form method="GET" action="{{ route('stock.history') }}">
-    <label>Reference:</label>
-    <input type="text" name="reference" value="{{ request('reference') }}">
+<br>
 
-    <label>Tanggal:</label>
-    <input type="text" name="transaction_date" placeholder="dd-mm-yyyy" value="{{ request('transaction_date') }}"> 
+<div style="margin-bottom: 10px;">
+    <input type="text" id="f-reference" placeholder="Reference">
 
-    <label>Product:</label>
-    <input type="text" name="product" value="{{ request('product') }}">
+    <input type="text" id="f-date" placeholder="dd-mm-yyyy">
 
-    <label>Location:</label>
-    <input type="text" name="location" value="{{ request('location') }}">
+    <input type="text" id="f-product" placeholder="Product">
 
-    <button type="submit">Cari</button>
-</form>
+    <input type="text" id="f-location" placeholder="Location">
 
-<table border="1" cellpadding="6">
-    <tr>
-        <th>Reference</th>
-        <th>Tanggal</th>
-        <th>Qty</th>
-        <th>Product</th>
-        <th>Location</th>
-    </tr>
-
-    @foreach($report as $r)
-        <tr>
-            <td>{{ $r->reference }}</td>
-            <td>{{ \Carbon\Carbon::parse($r->transaction_date)->format('d-m-Y') }}</td>
-            <td>{{ $r->quantity }}</td>
-
-            <td>
-                {{ optional($r->stock->product)->name }}
-            </td>
-
-            <td>
-                {{ optional($r->stock->location)->name }}
-            </td>
-        </tr>
-        
-
-    @endforeach
-</table>
-
-<br>    
-
-<div>
-{{ $report->links('pagination::bootstrap-4') }}
-
+    <button id="btn-filter">Search</button>
 </div>
 
-<br><br>
 
+<table id="history-table" class="display">
+    <thead>
+        <tr>
+            <th>Reference</th>
+            <th>Tanggal</th>
+            <th>Qty</th>
+            <th>Product</th>
+            <th>Location</th>
+        </tr>
+    </thead>
+</table>
+
+<br>
 <a href="{{ route('stock.transaction.form') }}">Transaction</a> |
 <a href="{{ route('stock.saldo') }}">Saldo</a>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+<script>
+$(function () {
+
+    let table = $('#history-table').DataTable({
+        processing: true,
+        serverSide: true,
+        searching: false,
+        ajax: {
+            url: "{{ route('stock.history.data') }}",
+            data: function (d) {
+                d.reference = $('#f-reference').val();
+                d.transaction_date = $('#f-date').val();
+                d.product = $('#f-product').val();
+                d.location = $('#f-location').val();
+            }
+        },
+        columns: [
+            { data: 'reference' },
+            { data: 'transaction_date' },
+            { data: 'quantity' },
+            { data: 'product', orderable: false },
+            { data: 'location', orderable: false }
+        ]
+    });
+
+    $('#btn-filter').on('click', function () {
+        table.ajax.reload();
+    });
+
+});
+
+</script>
 
 </body>
 </html>

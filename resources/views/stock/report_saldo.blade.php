@@ -37,29 +37,12 @@
 
 <hr>
 
-@if(!is_null($saldo))
-    <h3>Hasil Saldo</h3>
-
-    @if($stock)
-        <p>
-            <strong>Produk:</strong>
-            {{ $stock->product->code }} - {{ $stock->product->name }}
-        </p>
-
-        <p>
-            <strong>Lokasi:</strong>
-            {{ $stock->location->code }} - {{ $stock->location->name }}
-        </p>
-
-        <p>
-            <strong>Total Saldo:</strong>
-            {{ $saldo }}
-        </p>
-    @else
-        <p><strong>Saldo:</strong> 0</p>
-        <p>Data stok tidak ditemukan untuk kombinasi produk dan lokasi ini.</p>
-    @endif
+@if($saldo !== null && $stock->isNotEmpty())
+    <h3>Product: {{ $stock->first()->product->name }}</h3>
+    <h3>Location: {{ $stock->first()->location->name }}</h3>
+    <h3>Total Saldo: {{ $saldo }}</h3>
 @endif
+
 
 <br>
 <a href="{{ route('stock.transaction.form') }}">Transaction</a> |

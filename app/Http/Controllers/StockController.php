@@ -10,6 +10,7 @@ use App\Program;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Yajra\DataTables\Facades\DataTables;
 
 class StockController extends Controller
 {
@@ -23,7 +24,7 @@ class StockController extends Controller
     
     public function handleTransaction(Request $request)
     {
-        // validate transaction type first
+        // validate transaction type
         $request->validate([
             'type' => 'required|in:IN,OUT',
             'product_id' => 'required|exists:products,id',
@@ -32,7 +33,7 @@ class StockController extends Controller
             'date' => 'required|date',
         ]);
 
-        // normalize date input (dd-mm-yyyy → yyyy-mm-dd)
+        // normalize date input (dd-mm-yyyy -> yyyy-mm-dd)
         $normalizedDate = \Carbon\Carbon::createFromFormat('d-m-Y', $request->date)
         ->format('Y-m-d');
 
@@ -201,13 +202,9 @@ class StockController extends Controller
         $stock = Stock::with(['product', 'location'])
             ->where('product_id', $request->product_id)
             ->where('location_id', $request->location_id)
-            ->first();
+            ->get();
 
-        if ($stock) {
-            $saldo = $stock->transactions()->sum('quantity');
-        } else {
-            $saldo = 0;
-        }
+        $saldo = $stock->sum('quantity');
     }
 
     return view('stock.report_saldo', compact(
@@ -220,50 +217,54 @@ class StockController extends Controller
 
 
     // Report History
-public function history(Request $request)
+public function history()
 {
-    $request->validate([
-        'reference' => 'nullable|string',
-        'transaction_date' => 'nullable|date_format:d-m-Y',
-        'product' => 'nullable|string',
-        'location' => 'nullable|string',
-    ]);
-
-    $products = Product::all();
-    $locations = Location::all();
-
-    $date = $request->transaction_date
-    ? Carbon::createFromFormat('d-m-Y', $request->transaction_date)->format('Y-m-d')
-    : null;
-
-    $report = StockTransaction::with(['stock.product', 'stock.location'])
-
-        ->when($request->reference, function ($q) use ($request) {
-            $q->where('reference', 'like', '%' . $request->reference . '%');
-        })
-
-        ->when($date, function ($q) use ($date) {
-            $q->whereDate('transaction_date', $date);
-        })
-
-        ->when($request->product, function ($q) use ($request) {
-            $q->whereHas('stock.product', function ($sub) use ($request) {
-                $sub->where('name', 'like', '%' . $request->product . '%');
-            });
-        })
-
-        ->when($request->location, function ($q) use ($request) {
-            $q->whereHas('stock.location', function ($sub) use ($request) {
-                $sub->where('name', 'like', '%' . $request->location . '%');
-            });
-        })
-
-        ->orderBy('created_at', 'desc')
-        ->paginate(5)
-        ->appends($request->query());
-
-    return view('stock.report_history', compact('report', 'products', 'locations'));
+    // render page only for ajax
+    return view('stock.report_history');
 }
 
+public function historyData(Request $request)
+{
+    $query = StockTransaction::with(['stock.product', 'stock.location']);
+
+    
+    if ($request->filled('reference')) {
+        $query->where('reference', 'like', '%' . $request->reference . '%');
+    }
+
+    
+    if ($request->filled('transaction_date')) {
+        $date = Carbon::createFromFormat('d-m-Y', $request->transaction_date)->format('Y-m-d');
+        $query->whereDate('transaction_date', $date);
+    }
+
+    
+    if ($request->filled('product')) {
+        $query->whereHas('stock.product', function ($q) use ($request) {
+            $q->where('name', 'like', '%' . $request->product . '%');
+        });
+    }
+
+    
+    if ($request->filled('location')) {
+        $query->whereHas('stock.location', function ($q) use ($request) {
+            $q->where('name', 'like', '%' . $request->location . '%');
+        });
+    }
+
+    return datatables()
+        ->of($query)
+        ->editColumn('transaction_date', function ($row) {
+            return Carbon::parse($row->transaction_date)->format('d-m-Y');
+        })
+        ->addColumn('product', function ($row) {
+            return optional($row->stock->product)->name;
+        })
+        ->addColumn('location', function ($row) {
+            return optional($row->stock->location)->name;
+        })
+        ->rawColumns(['product', 'location'])
+        ->make(true);
+}
 
 }
