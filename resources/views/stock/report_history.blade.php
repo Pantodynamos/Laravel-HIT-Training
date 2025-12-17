@@ -46,8 +46,8 @@
 $(function () {
 
     let table = $('#history-table').DataTable({
-        processing: true,
-        serverSide: true,
+        processing: false,
+        serverSide: false,
         searching: false,
         ajax: {
             url: "{{ route('stock.history.data') }}",

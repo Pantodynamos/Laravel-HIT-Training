@@ -102,7 +102,6 @@ document.addEventListener('input', function (e) {
 function openConfirm() {
     const form = document.querySelector('form');
 
-    // basic frontend validation
     if (!form.checkValidity()) {
         form.reportValidity();
         return;

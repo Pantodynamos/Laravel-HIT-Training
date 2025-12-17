@@ -17,6 +17,7 @@ class StockTransaction extends Model
 
     public function program()
     {
-        return $this->belongsTo(Program::class, 'program_id', 'program');
+        return $this->belongsTo(Program::class);
     }
+
 }

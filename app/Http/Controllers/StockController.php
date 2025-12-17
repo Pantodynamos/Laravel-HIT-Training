@@ -24,7 +24,6 @@ class StockController extends Controller
     
     public function handleTransaction(Request $request)
     {
-        // validate transaction type
         $request->validate([
             'type' => 'required|in:IN,OUT',
             'product_id' => 'required|exists:products,id',
@@ -50,17 +49,25 @@ class StockController extends Controller
     }
 
     // Generate Reference
-    private function generateReference($program)
+    private function generateReference(string $programCode): array
     {
-        $prog = Program::where('program', $program)->lockForUpdate()->first();
-        if (!$prog) {
-            abort(500, "Program $program not found in table programs");
-        }
+    $program = Program::where('program', $programCode)
+        ->lockForUpdate()
+        ->first();
 
-        $prog->increment('counter');
-
-        return $program . $prog->counter;
+    if (!$program) {
+        abort(500, "Program {$programCode} not found");
     }
+
+    $program->increment('counter');
+
+    return [
+        'reference'   => $programCode . $program->counter,
+        'program_id'  => $program->id,
+    ];
+}
+
+
 
     // Tambah Stok  
     public function addStock(Request $request)
@@ -103,25 +110,26 @@ class StockController extends Controller
                 ]);
             }
 
-            $reference = $this->generateReference("TAMBAH");
+            $ref = $this->generateReference('TAMBAH');
 
             StockTransaction::create([
-                'reference' => $reference,
+                'reference'        => $ref['reference'],
                 'transaction_date' => $request->date_in,
-                'quantity' => $request->quantity,
-                'stock_id' => $batch->id,
-                'program_id' => 'TAMBAH'
+                'quantity'         => $request->quantity,
+                'stock_id'         => $batch->id,
+                'program_id'       => $ref['program_id'],
             ]);
 
+
             DB::commit();
-            return back()->with('success', 'Stok berhasil ditambahkan! Ref: '.$reference);
+            return back()->with('success', 'Stok berhasil ditambahkan! Ref: '.$ref['reference']);
         } catch (\Throwable $e) {
             DB::rollBack();
             return back()->with('error', $e->getMessage());
         }
     }
 
-    // Kurangi Stok FIFO
+    // Kurangi Stok secara FIFO
     public function reduceStock(Request $request)
     {
         $request->validate([
@@ -154,7 +162,7 @@ class StockController extends Controller
                 return back()->with('error', 'Tanggal transaksi tidak valid');
             }
 
-            $reference = $this->generateReference("KURANG");
+            $ref = $this->generateReference("KURANG");
 
             $batches = Stock::where('product_id', $request->product_id)
                 ->where('location_id', $request->location_id)
@@ -170,18 +178,18 @@ class StockController extends Controller
                 $batch->save();
 
                 StockTransaction::create([
-                    'reference' => $reference,
+                    'reference' => $ref['reference'],
                     'transaction_date' => $request->transaction_date,
                     'quantity' => $use,
                     'stock_id' => $batch->id,
-                    'program_id' => 'KURANG'
+                    'program_id' => $ref['program_id'],
                 ]);
 
                 $qty -= $use;
             }
 
             DB::commit();
-            return back()->with('success', 'Stok berhasil dikurangi! Ref: '.$reference);
+            return back()->with('success', 'Stok berhasil dikurangi! Ref: '.$ref['reference']);
         } catch (\Throwable $e) {
             DB::rollBack();
             return back()->with('error', $e->getMessage());
@@ -226,45 +234,54 @@ public function history()
 public function historyData(Request $request)
 {
     $query = StockTransaction::with(['stock.product', 'stock.location']);
-
     
     if ($request->filled('reference')) {
         $query->where('reference', 'like', '%' . $request->reference . '%');
     }
 
-    
     if ($request->filled('transaction_date')) {
-        $date = Carbon::createFromFormat('d-m-Y', $request->transaction_date)->format('Y-m-d');
+        $date = Carbon::createFromFormat('d-m-Y', $request->transaction_date)
+            ->format('Y-m-d');
         $query->whereDate('transaction_date', $date);
     }
 
-    
     if ($request->filled('product')) {
         $query->whereHas('stock.product', function ($q) use ($request) {
             $q->where('name', 'like', '%' . $request->product . '%');
         });
     }
 
-    
     if ($request->filled('location')) {
         $query->whereHas('stock.location', function ($q) use ($request) {
             $q->where('name', 'like', '%' . $request->location . '%');
         });
     }
 
-    return datatables()
-        ->of($query)
-        ->editColumn('transaction_date', function ($row) {
-            return Carbon::parse($row->transaction_date)->format('d-m-Y');
-        })
-        ->addColumn('product', function ($row) {
-            return optional($row->stock->product)->name;
-        })
-        ->addColumn('location', function ($row) {
-            return optional($row->stock->location)->name;
-        })
-        ->rawColumns(['product', 'location'])
-        ->make(true);
+    // fetch dulu baru di group
+    $rows = $query->orderBy('transaction_date', 'desc')->get();
+
+    $grouped = $rows->groupBy(function ($row) {
+        return implode('|', [
+            $row->reference,
+            optional($row->stock)->product_id,
+            optional($row->stock)->location_id,
+            $row->transaction_date,
+        ]);
+    });
+
+    $final = $grouped->map(function ($items) {
+        $first = $items->first();
+
+        return [
+            'reference' => $first->reference,
+            'transaction_date' => Carbon::parse($first->transaction_date)->format('d-m-Y'),
+            'quantity' => $items->sum('quantity'),
+            'product' => optional($first->stock->product)->name,
+            'location' => optional($first->stock->location)->name,
+        ];
+    })->values();
+
+    return datatables()->of($final)->make(true);
 }
 
 }

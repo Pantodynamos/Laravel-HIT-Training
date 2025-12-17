@@ -9,7 +9,7 @@ class CreateProgramsTable extends Migration
     public function up()
     {
         Schema::create('programs', function (Blueprint $table) {
-            $table->id();
+            $table->bigIncrements('id');
             $table->string('program', 20)->unique();
             $table->unsignedBigInteger('counter')->default(0);
             $table->dateTime('created_at');

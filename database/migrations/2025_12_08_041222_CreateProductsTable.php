@@ -9,7 +9,7 @@ class CreateProductsTable extends Migration
     public function up()
     {
         Schema::create('products', function (Blueprint $table) {
-            $table->id();
+            $table->bigIncrements('id');
             $table->string('code', 20)->unique();
             $table->string('name', 40)->unique();
             $table->dateTime('created_at');
