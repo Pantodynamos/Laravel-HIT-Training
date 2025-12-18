@@ -1,18 +1,18 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Report Saldo</title>
+    <title>Balance Check</title>
         <link rel="stylesheet"
       href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 </head>
 <body>
 
-<h2>Report Saldo Barang</h2>
+<h2>Balance Check</h2>
 
 <form method="GET" action="{{ route('stock.saldo') }}">
-    <label>Produk:</label>
+    <label>Product:</label>
     <select name="product_id" required>
-        <option value="">-- Pilih --</option>
+        <option value="">-- Choose --</option>
         @foreach($products as $p)
             <option value="{{ $p->id }}"
                 {{ request('product_id') == $p->id ? 'selected' : '' }}>
@@ -21,9 +21,9 @@
         @endforeach
     </select>
 
-    <label>Lokasi:</label>
+    <label>Location:</label>
     <select name="location_id" required>
-        <option value="">-- Pilih --</option>
+        <option value="">-- Choose --</option>
         @foreach($locations as $l)
             <option value="{{ $l->id }}"
                 {{ request('location_id') == $l->id ? 'selected' : '' }}>
@@ -32,7 +32,7 @@
         @endforeach
     </select>
 
-    <button type="submit">Cari</button>
+    <button type="submit">Search</button>
 </form>
 
 <hr>

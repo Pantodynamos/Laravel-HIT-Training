@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Transaksi Stok</title>
-        <link rel="stylesheet"
-      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <title>Stock Transaction</title>
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+        <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+</head>
 </head>
 <body>
 
-<h2>Transaksi Stok (Tambah / Kurangi)</h2>
+<h2>Stock Transaction</h2>
 
 @if(session('error'))
     <p style="color:red">{{ session('error') }}</p>
@@ -28,44 +29,78 @@
 <form method="POST" action="{{ route('stock.transaction.submit') }}">
     @csrf
 
-    <label>Jenis Transaksi:</label>
-    <select name="type" required>
-        <option value="">-- Pilih --</option>
-        <option value="IN">Tambah Stok</option>
-        <option value="OUT">Kurangi Stok</option>
-    </select>
-    <br><br>
+    <div class="form-group row">
+        <label class="col-sm-3 col-form-label">Transaction Type</label>
+        <div class="col-sm-6">
+            <select name="type" class="form-control" required>
+                <option value="">-- Choose --</option>
+                <option value="IN">Add Stock</option>
+                <option value="OUT">Reduce Stock</option>
+            </select>
+        </div>
+    </div>
 
-    <label>Produk:</label>
-    <select name="product_id" required>
-        @foreach($products as $p)
-            <option value="{{ $p->id }}">
-                {{ $p->code }} - {{ $p->name }}
-            </option>
-        @endforeach
-    </select>
-    <br><br>
+    <div class="form-group row">
+        <label class="col-sm-3 col-form-label">Product</label>
+        <div class="col-sm-6">
+            <select name="product_id" class="form-control" required>
+                <option value="">-- Choose --</option>
+                @foreach($products as $p)
+                    <option value="{{ $p->id }}">
+                        {{ $p->code }} - {{ $p->name }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+    </div>
 
-    <label>Lokasi:</label>
-    <select name="location_id" required>
-        @foreach($locations as $l)
-            <option value="{{ $l->id }}">
-                {{ $l->code }} - {{ $l->name }}
-            </option>
-        @endforeach
-    </select>
-    <br><br>
+    <div class="form-group row">
+        <label class="col-sm-3 col-form-label">Location</label>
+        <div class="col-sm-6">
+            <select name="location_id" class="form-control" required>
+                <option value="">-- Choose --</option>
+                @foreach($locations as $l)
+                    <option value="{{ $l->id }}">
+                        {{ $l->code }} - {{ $l->name }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+    </div>
 
-    <label>Quantity:</label>
-    <input type="number" name="quantity" min="1" required>
-    <br><br>
+    <div class="form-group row">
+        <label class="col-sm-3 col-form-label">Quantity</label>
+        <div class="col-sm-3">
+            <input type="number" name="quantity" class="form-control" min="1" required>
+        </div>
+    </div>
 
-    <label>Tanggal (dd-mm-yyyy):</label>
-    <input type="text" name="date" placeholder="dd-mm-yyyy" required>
-    <br><br>
+    <div class="form-group row">
+        <label for="f-date" class="col-sm-3 col-form-label">
+            Date (dd-mm-yyyy)
+        </label>
+        <div class="col-sm-3">
+            <input
+                type="text"
+                id="f-date"
+                name="transaction_date"
+                class="form-control"
+                placeholder="dd-mm-yyyy"
+                autocomplete="off"
+                required
+            >
+        </div>
+    </div>
 
-    <button type="button" onclick="openConfirm()">Submit</button>
+    <div class="form-group row">
+        <div class="col-sm-9 offset-sm-3">
+            <button type="button" class="btn btn-primary" onclick="openConfirm()">
+                Submit
+            </button>
+        </div>
+    </div>
 </form>
+
 
 <div id="confirmModal" style="display:none; border:1px solid #000; padding:15px; background:#fff;">
     <h3>Confirm Transaction</h3>
@@ -76,15 +111,31 @@
     <p><strong>Quantity:</strong> <span id="c_quantity"></span></p>
     <p><strong>Date:</strong> <span id="c_date"></span></p>
 
-    <button onclick="submitForm()">Confirm</button>
+    <button id="btn-submit" onclick="submitForm()">Confirm</button>
+
     <button onclick="closeConfirm()">Cancel</button>
 </div>
 
 
 <br>
 
-<a href="{{ route('stock.saldo') }}">Cek Saldo</a> |
+<a href="{{ route('stock.saldo') }}">Balance Check</a> |
 <a href="{{ route('stock.history') }}">History</a>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+
+<script>
+function submitForm() {
+    const btn = document.getElementById('btn-submit');
+
+    btn.disabled = true;
+    btn.innerText = 'Processing...';
+
+    document.querySelector('form').submit();
+}
+</script>
+
 
 <script>
 document.addEventListener('input', function (e) {
@@ -122,7 +173,7 @@ function openConfirm() {
         document.querySelector('[name="quantity"]').value;
 
     document.getElementById('c_date').innerText =
-        document.querySelector('[name="date"]').value;
+        document.querySelector('[name="transaction_date"]').value;
 
     document.getElementById('confirmModal').style.display = 'block';
 }
@@ -131,10 +182,20 @@ function closeConfirm() {
     document.getElementById('confirmModal').style.display = 'none';
 }
 
-function submitForm() {
-    document.querySelector('form').submit();
-}
+
+
 </script>
+
+<script>
+$(function () {
+    $('#f-date').datepicker({
+        dateFormat: 'dd-mm-yy',
+        changeMonth: true,
+        changeYear: true
+    });
+});
+</script>
+
 
 </body>
 </html>

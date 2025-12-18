@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-    <title>History Transaksi</title>
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.0.0/css/dataTables.dataTables.min.css">
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <title>Transaction History</title>
 </head>
 <body>
 
-<h2>Report History Transaksi</h2>
+<h2>Transaction History</h2>
 
 <br>
 
@@ -19,7 +20,7 @@
 
     <input type="text" id="f-location" placeholder="Location">
 
-    <button id="btn-filter">Search</button>
+    <button type="button" id="btn-filter" class="btn btn-primary">Search</button>
 </div>
 
 
@@ -27,8 +28,8 @@
     <thead>
         <tr>
             <th>Reference</th>
-            <th>Tanggal</th>
-            <th>Qty</th>
+            <th>Date</th>
+            <th class="text-right">Qty</th>
             <th>Product</th>
             <th>Location</th>
         </tr>
@@ -37,43 +38,83 @@
 
 <br>
 <a href="{{ route('stock.transaction.form') }}">Transaction</a> |
-<a href="{{ route('stock.saldo') }}">Saldo</a>
+<a href="{{ route('stock.saldo') }}">Balance Check</a>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/2.0.0/js/dataTables.min.js"></script>
+
+<script src="https://cdn.datatables.net/plug-ins/2.0.0/sorting/natural.js"></script>
 
 <script>
 $(function () {
 
-    let table = $('#history-table').DataTable({
-        processing: false,
-        serverSide: false,
-        searching: false,
-        ajax: {
-            url: "{{ route('stock.history.data') }}",
-            data: function (d) {
-                d.reference = $('#f-reference').val();
-                d.transaction_date = $('#f-date').val();
-                d.product = $('#f-product').val();
-                d.location = $('#f-location').val();
+let table = $('#history-table').DataTable({
+    processing: false,
+    serverSide: false,
+    searching: false,
+    order: [[0, 'asc']],
+
+    ajax: {
+        url: "{{ route('stock.history.data') }}",
+        data: function (d) {
+            d.reference = $('#f-reference').val();
+            d.transaction_date = $('#f-date').val();
+            d.product = $('#f-product').val();
+            d.location = $('#f-location').val();
+        }
+    },
+
+columns: [
+        { 
+            data: 'reference', 
+            type: 'natural'
+        },
+ { 
+        data: 'transaction_date',
+        render: function (data, type, row) {
+            if (type === 'sort') {
+                // Convert "22-12-2025" to "20251222"
+                var parts = data.split('-');
+                return parts[2] + parts[1] + parts[0];
+            }
+            return data;
+        }
+ },
+        {
+            data: 'quantity',
+            className: 'text-right',
+            render: function (data, type) {
+                if (type === 'display' || type === 'filter') {
+                    return Number(data).toLocaleString('id-ID');
+                }
+                return data;
             }
         },
-        columns: [
-            { data: 'reference' },
-            { data: 'transaction_date' },
-            { data: 'quantity' },
-            { data: 'product', orderable: false },
-            { data: 'location', orderable: false }
-        ]
-    });
+        { data: 'product', orderable: false },
+        { data: 'location', orderable: false }
+    ]
+});
 
-    $('#btn-filter').on('click', function () {
-        table.ajax.reload();
-    });
+$('#btn-filter').on('click', function () {
+    table.ajax.reload();
+});
 
 });
 
+
 </script>
+
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+
+<script>
+$(function () {
+    $('#f-date').datepicker({
+        dateFormat: 'dd-mm-yy'
+    });
+});
+</script>
+
 
 </body>
 </html>

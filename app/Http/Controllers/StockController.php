@@ -29,11 +29,11 @@ class StockController extends Controller
             'product_id' => 'required|exists:products,id',
             'location_id' => 'required|exists:locations,id',
             'quantity' => 'required|integer|min:1',
-            'date' => 'required|date',
+            'transaction_date' => 'required|date',
         ]);
 
         // normalize date input (dd-mm-yyyy -> yyyy-mm-dd)
-        $normalizedDate = \Carbon\Carbon::createFromFormat('d-m-Y', $request->date)
+        $normalizedDate = \Carbon\Carbon::createFromFormat('d-m-Y', $request->transaction_date)
         ->format('Y-m-d');
 
         if ($request->type === 'IN') {
@@ -89,7 +89,7 @@ class StockController extends Controller
 
             if ($last && $request->date_in < $last->date_in) {
                 DB::rollBack();
-                return back()->with('error', 'Tanggal masuk tidak valid');
+                return back()->with('error', 'Invalid Date');
             }
 
             // Gabungkan batch jika ada tanggal yang sama
@@ -180,7 +180,7 @@ class StockController extends Controller
                 StockTransaction::create([
                     'reference' => $ref['reference'],
                     'transaction_date' => $request->transaction_date,
-                    'quantity' => $use,
+                    'quantity' => -$use,
                     'stock_id' => $batch->id,
                     'program_id' => $ref['program_id'],
                 ]);
