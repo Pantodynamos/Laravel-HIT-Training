@@ -2,32 +2,22 @@
 <html>
 <head>
     <title>Stock Transaction</title>
-        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-        <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    <link rel="stylesheet"
+          href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet"
+          href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
 </head>
-</head>
-<body>
+
+<body class="p-3">
 
 <h2>Stock Transaction</h2>
 
-@if(session('error'))
-    <p style="color:red">{{ session('error') }}</p>
-@endif
+<div id="alert-area"></div>
 
-@if(session('success'))
-    <p style="color:green">{{ session('success') }}</p>
-@endif
-
-@if ($errors->any())
-    <ul style="color:red">
-        @foreach ($errors->all() as $error)
-            <li>{{ $error }}</li>
-        @endforeach
-    </ul>
-@endif
-
-<form method="POST" action="{{ route('stock.transaction.submit') }}">
-    @csrf
+<form id="transaction-form">
 
     <div class="form-group row">
         <label class="col-sm-3 col-form-label">Transaction Type</label>
@@ -76,19 +66,14 @@
     </div>
 
     <div class="form-group row">
-        <label for="f-date" class="col-sm-3 col-form-label">
-            Date (dd-mm-yyyy)
-        </label>
+        <label class="col-sm-3 col-form-label">Date</label>
         <div class="col-sm-3">
-            <input
-                type="text"
-                id="f-date"
-                name="transaction_date"
-                class="form-control"
-                placeholder="dd-mm-yyyy"
-                autocomplete="off"
-                required
-            >
+            <input type="text"
+                   id="f-date"
+                   name="transaction_date"
+                   class="form-control"
+                   autocomplete="off"
+                   required>
         </div>
     </div>
 
@@ -99,10 +84,11 @@
             </button>
         </div>
     </div>
+
 </form>
 
-
-<div id="confirmModal" style="display:none; border:1px solid #000; padding:15px; background:#fff;">
+<div id="confirmModal"
+     style="display:none; border:1px solid #000; padding:15px; background:#fff;">
     <h3>Confirm Transaction</h3>
 
     <p><strong>Type:</strong> <span id="c_type"></span></p>
@@ -111,11 +97,14 @@
     <p><strong>Quantity:</strong> <span id="c_quantity"></span></p>
     <p><strong>Date:</strong> <span id="c_date"></span></p>
 
-    <button id="btn-submit" onclick="submitForm()">Confirm</button>
+    <button id="btn-submit" class="btn btn-success" onclick="submitAjax()">
+        Confirm
+    </button>
 
-    <button onclick="closeConfirm()">Cancel</button>
+    <button class="btn btn-secondary" onclick="closeConfirm()">
+        Cancel
+    </button>
 </div>
-
 
 <br>
 
@@ -126,67 +115,78 @@
 <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
 
 <script>
-function submitForm() {
-    const btn = document.getElementById('btn-submit');
-
-    btn.disabled = true;
-    btn.innerText = 'Processing...';
-
-    document.querySelector('form').submit();
+function showAlert(type, message) {
+    $('#alert-area').html(
+        `<div class="alert alert-${type}">${message}</div>`
+    );
 }
-</script>
 
+function submitAjax() {
+    const btn = $('#btn-submit');
+    btn.prop('disabled', true).text('Processing...');
 
-<script>
-document.addEventListener('input', function (e) {
-    if (e.target.name === 'quantity') {
-        let value = parseInt(e.target.value, 10);
+    $.ajax({
+        url: "{{ route('stock.transaction.submit') }}",
+        method: 'POST',
+        data: $('#transaction-form').serialize(),
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        },
+        success: function (res) {
+            showAlert('success',
+                `Transaction saved. Reference: <strong>${res.reference}</strong>`
+            );
 
-        if (isNaN(value) || value < 1) {
-            e.target.value = '';
-        } else {
-            e.target.value = value;
+            $('#transaction-form')[0].reset();
+            closeConfirm();
+        },
+        error: function (xhr) {
+            if (xhr.status === 422 && xhr.responseJSON.errors) {
+                let msg = '<ul>';
+
+                $.each(xhr.responseJSON.errors, function (_, err) {
+                    msg += `<li>${err[0]}</li>`;
+                });
+
+                msg += '</ul>';
+                showAlert('danger', msg);
+            } else {
+                showAlert('danger', 'Transaction failed');
+            }
+        },
+        complete: function () {
+            btn.prop('disabled', false).text('Confirm');
         }
-    }
-});
+    });
+}
 
 function openConfirm() {
-    const form = document.querySelector('form');
+    const form = document.getElementById('transaction-form');
 
     if (!form.checkValidity()) {
         form.reportValidity();
         return;
     }
 
-    document.getElementById('c_type').innerText =
-        document.querySelector('[name="type"]').value === 'IN'
-            ? 'ADD STOCK'
-            : 'REDUCE STOCK';
+    $('#c_type').text(
+        $('[name="type"]').val() === 'IN' ? 'ADD STOCK' : 'REDUCE STOCK'
+    );
+    $('#c_product').text(
+        $('[name="product_id"] option:selected').text()
+    );
+    $('#c_location').text(
+        $('[name="location_id"] option:selected').text()
+    );
+    $('#c_quantity').text($('[name="quantity"]').val());
+    $('#c_date').text($('[name="transaction_date"]').val());
 
-    document.getElementById('c_product').innerText =
-        document.querySelector('[name="product_id"] option:checked').text;
-
-    document.getElementById('c_location').innerText =
-        document.querySelector('[name="location_id"] option:checked').text;
-
-    document.getElementById('c_quantity').innerText =
-        document.querySelector('[name="quantity"]').value;
-
-    document.getElementById('c_date').innerText =
-        document.querySelector('[name="transaction_date"]').value;
-
-    document.getElementById('confirmModal').style.display = 'block';
+    $('#confirmModal').show();
 }
 
 function closeConfirm() {
-    document.getElementById('confirmModal').style.display = 'none';
+    $('#confirmModal').hide();
 }
 
-
-
-</script>
-
-<script>
 $(function () {
     $('#f-date').datepicker({
         dateFormat: 'dd-mm-yy',
@@ -195,7 +195,6 @@ $(function () {
     });
 });
 </script>
-
 
 </body>
 </html>

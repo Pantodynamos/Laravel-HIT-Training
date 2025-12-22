@@ -14,7 +14,7 @@
 <div style="margin-bottom: 10px;">
     <input type="text" id="f-reference" placeholder="Reference">
 
-    <input type="text" id="f-date" placeholder="dd-mm-yyyy">
+    <input type="text" id="f-date" placeholder="Date">
 
     <input type="text" id="f-product" placeholder="Product">
 
